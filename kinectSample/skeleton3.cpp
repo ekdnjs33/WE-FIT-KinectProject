@@ -9,6 +9,8 @@
 #include <stdio.h> 
 #include <curl/curl.h> 
 
+#define radian 57.2958
+
 #pragma comment(lib, "wldap32.lib") 
 #pragma comment(lib, "ws2_32.lib") 
 
@@ -294,47 +296,87 @@ void Skeleton::skeletonTracking()
 							// 실시간 시간 데이터 추출 (4/30)
 							std::cout << "[time] " << tm.tm_year + 1900 << "-" << tm.tm_mon + 1 << "-" << tm.tm_mday << " " << tm.tm_hour << ":" << tm.tm_min << ":" << tm.tm_sec << ":" << tail << std::endl;
 
+							cv::Point jointPoint[25];
 							for (int type = 0; type < JointType::JointType_Count; type++)
 							{
-								// 실시간 스켈레톤 데이터 좌표 추출 (4/23)
-								cv::Point jointPoint = changeCoordinates(joint, type);
-								if ((jointPoint.x >= 0) && (jointPoint.y >= 0))
-								{
-									// kinect-server로 시간 및 skeleton 좌표 데이터 post (6/1)
-									/* Now specify the POST data */
-									char buf[200]; 
-									sprintf(buf, "userId=white&jointType=%d&pointX=%d&pointY=%d&timestamp=%d-%02d-%02d %02d:%02d:%02d.%03d", type, jointPoint.x, jointPoint.y, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tail);
-									//curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf); // 데이터 post (6/1)
-									// 나노초 단위 서버에 전송 (7/2)
-
-									/* In windows, this will init the winsock stuff */
-									curl_global_init(CURL_GLOBAL_ALL);
-
-									/* get a curl handle */
-									curl = curl_easy_init();
-									if (curl) {
-										/* First set the URL that is about to receive our POST. This URL can
-										just as well be a https:// URL if that is what should receive the
-										data. */
-										curl_easy_setopt(curl, CURLOPT_URL, "http://10.200.0.254:8080/joints");
-										/* Now specify the POST data */
-										curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf);
-
-										/* Perform the request, res will get the return code */
-										res = curl_easy_perform(curl);
-										/* Check for errors */
-										if (res != CURLE_OK)
-											fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-
-										/* always cleanup */
-										curl_easy_cleanup(curl);
-									}
-									curl_global_cleanup();
-
-									std::cout << "jointtype: " << type << " jointpoint.x: " << jointPoint.x << " jointpoint.y: " << jointPoint.y << std::endl;
-
-								}
+								jointPoint[type] = changeCoordinates(joint, type);
 							}
+							//0-1-20
+							double v1_x = jointPoint[0].x - jointPoint[1].x;
+							double v1_y = jointPoint[0].y - jointPoint[1].y;
+							double v2_x = jointPoint[1].x - jointPoint[20].x;
+							double v2_y = jointPoint[1].y - jointPoint[20].y;
+							double v3_x = jointPoint[0].x - jointPoint[20].x;
+							double v3_y = jointPoint[0].y - jointPoint[20].y;
+							double d1 = sqrt(pow(double(v1_x), 2) + pow(double(v1_y), 2));
+							double d2 = sqrt(pow(double(v2_x), 2) + pow(double(v2_y), 2));
+							double d3 = sqrt(pow(double(v3_x), 2) + pow(double(v3_y), 2));
+
+							double backAngle = acos((pow(d1, 2) + pow(d3, 2) - pow(d2, 2)) / (2 * (d1*d3))) * radian;
+
+							//4-5-6
+							double v5_x = jointPoint[4].x - jointPoint[5].x;
+							double v5_y = jointPoint[4].y - jointPoint[5].y;
+							double v6_x = jointPoint[5].x - jointPoint[6].x;
+							double v6_y = jointPoint[5].y - jointPoint[6].y;
+							double v7_x = jointPoint[4].x - jointPoint[6].x;
+							double v7_y = jointPoint[4].y - jointPoint[6].y;
+							double d5 = sqrt(pow(double(v5_x), 2) + pow(double(v5_y), 2));
+							double d6 = sqrt(pow(double(v6_x), 2) + pow(double(v6_y), 2));
+							double d7 = sqrt(pow(double(v7_x), 2) + pow(double(v7_y), 2));
+
+							double leftArm = acos((pow(d5, 2) + pow(d7, 2) - pow(d6, 2)) / (2 * (d5*d7))) * radian;
+
+							//8-9-10
+							double v9_x = jointPoint[8].x - jointPoint[9].x; //P8.x-P9.x
+							double v9_y = jointPoint[8].y - jointPoint[9].y;
+							//double v10_x = jointPoint[9].x - jointPoint[10].x;
+							//double v10_y = jointPoint[9].y - jointPoint[10].y;
+							double v11_x = jointPoint[8].x - jointPoint[10].x;
+							double v11_y = jointPoint[8].y - jointPoint[10].y;
+							double d9 = sqrt(pow((v9_x), 2) + pow((v9_y), 2));
+							//double d10 = sqrt(pow((v10_x), 2) + pow((v10_y), 2));
+							double d11 = sqrt(pow((v11_x), 2) + pow((v11_y), 2));
+
+							double rightArm = acos((v9_x * v11_x + v9_y * v11_y) / (d9*d11)) * radian;
+
+							// 실시간 스켈레톤 데이터 좌표 추출 (4/23)
+
+							// kinect-server로 시간 및 skeleton 좌표 데이터 post (6/1)
+							/* Now specify the POST data */
+							char buf[200];
+							sprintf(buf, "userId=white&backAngle=%.2f&rightArm=%.2f&leftArm=%.2f&timestamp=%d-%02d-%02d %02d:%02d:%02d.%03d", backAngle, rightArm, leftArm, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tail);
+							//curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf); // 데이터 post (6/1)
+							// 나노초 단위 서버에 전송 (7/2)
+
+							/* In windows, this will init the winsock stuff */
+							curl_global_init(CURL_GLOBAL_ALL);
+
+							/* get a curl handle */
+							curl = curl_easy_init();
+							if (curl) {
+								/* First set the URL that is about to receive our POST. This URL can
+								just as well be a https:// URL if that is what should receive the
+								data. */
+								curl_easy_setopt(curl, CURLOPT_URL, "http://10.200.26.11:8080/joints");
+								/* Now specify the POST data */
+								curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf);
+
+								/* Perform the request, res will get the return code */
+								res = curl_easy_perform(curl);
+								/* Check for errors */
+								if (res != CURLE_OK)
+									fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+
+								/* always cleanup */
+								curl_easy_cleanup(curl);
+
+								curl_global_cleanup();
+
+								std::cout << "backAngle: " << backAngle << " rightArm: " << rightArm << " leftArm: " << leftArm << std::endl;
+
+							}
+
 						}
 
 
@@ -376,4 +418,3 @@ void Skeleton::skeletonTracking()
 	SafeRelease(pSensor);
 	cv::destroyAllWindows();
 }
-
