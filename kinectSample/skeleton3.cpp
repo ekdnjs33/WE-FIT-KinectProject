@@ -64,42 +64,6 @@ void Skeleton::drawSkeleton(cv::Mat canvas, Joint joint[JointType::JointType_Cou
 	cv::line(canvas, changeCoordinates(joint, JointType_AnkleRight), changeCoordinates(joint, JointType_FootRight), GREEN, 3); //오른쪽 발목에서 오른쪽 발(19)
 }
 
-void Skeleton::wideSquatAlgo(Joint joint[JointType::JointType_Count]) { // 와이드 스쿼트 알고리즘 (5/3)
-	cv::Point jointPoint[25];
-	for (int type = 0; type < JointType::JointType_Count; type++)
-	{
-		jointPoint[type] = changeCoordinates(joint, type);
-	}
-
-	double d1 = sqrt(pow(double(jointPoint[12].x - jointPoint[13].x), 2) + pow(double(jointPoint[12].y - jointPoint[13].y), 2));
-	double d2 = sqrt(pow(double(jointPoint[15].x - jointPoint[13].x), 2) + pow(double(jointPoint[15].y - jointPoint[13].y), 2));
-	double v1_x = jointPoint[13].x - jointPoint[12].x;
-	double v1_y = jointPoint[13].y - jointPoint[12].y;
-	double v2_x = jointPoint[15].x - jointPoint[13].x;
-	double v2_y = jointPoint[15].y - jointPoint[13].y;
-
-	if ((jointPoint[20].x * 1.1 > jointPoint[0].x) && (jointPoint[20].x * 0.9 < jointPoint[0].x)) {
-		std::cout << "허리 성공" << std::endl;
-		if ((jointPoint[4].x * 1.1 > jointPoint[14].x) && (jointPoint[8].x * 1.1 < jointPoint[18].x)) {
-			std::cout << "어깨 발끝 성공" << std::endl;
-			if ((jointPoint[13].x > jointPoint[15].x) && (jointPoint[17].x < jointPoint[19].x)) {
-				std::cout << "무릎 발끝 성공" << std::endl;
-				if (acos((v1_x * v2_x + v1_y * v2_y) / (d1*d2)) < 110)
-					std::cout << "성공" << std::endl;
-
-				else
-					std::cout << "각도실패" << std::endl;
-			}
-			else
-				std::cout << "무릎 발끝 실패" << std::endl;
-		}
-		else
-			std::cout << "어깨 발끝 실패" << std::endl;
-	}
-	else
-		std::cout << "허리 펴기 실패" << std::endl;
-}
-
 
 void Skeleton::skeletonTracking()
 {
@@ -302,40 +266,31 @@ void Skeleton::skeletonTracking()
 								jointPoint[type] = changeCoordinates(joint, type);
 							}
 							//0-1-20
-							double v1_x = jointPoint[0].x - jointPoint[1].x;
-							double v1_y = jointPoint[0].y - jointPoint[1].y;
+							double v1_x = jointPoint[1].x - jointPoint[0].x; //P8.x-P9.x
+							double v1_y = jointPoint[1].y - jointPoint[0].y;
 							double v2_x = jointPoint[1].x - jointPoint[20].x;
 							double v2_y = jointPoint[1].y - jointPoint[20].y;
-							double v3_x = jointPoint[0].x - jointPoint[20].x;
-							double v3_y = jointPoint[0].y - jointPoint[20].y;
-							double d1 = sqrt(pow(double(v1_x), 2) + pow(double(v1_y), 2));
-							double d2 = sqrt(pow(double(v2_x), 2) + pow(double(v2_y), 2));
-							double d3 = sqrt(pow(double(v3_x), 2) + pow(double(v3_y), 2));
+							double d1 = sqrt(pow((v1_x), 2) + pow((v1_y), 2));
+							double d2 = sqrt(pow((v2_x), 2) + pow((v2_y), 2));
 
-							double backAngle = acos((pow(d1, 2) + pow(d3, 2) - pow(d2, 2)) / (2 * (d1*d3))) * radian;
+							double backAngle = acos((v1_x * v2_x + v1_y * v2_y) / (d1*d2)) * radian;
 
 							//4-5-6
-							double v5_x = jointPoint[4].x - jointPoint[5].x;
-							double v5_y = jointPoint[4].y - jointPoint[5].y;
-							double v6_x = jointPoint[5].x - jointPoint[6].x;
-							double v6_y = jointPoint[5].y - jointPoint[6].y;
-							double v7_x = jointPoint[4].x - jointPoint[6].x;
-							double v7_y = jointPoint[4].y - jointPoint[6].y;
-							double d5 = sqrt(pow(double(v5_x), 2) + pow(double(v5_y), 2));
-							double d6 = sqrt(pow(double(v6_x), 2) + pow(double(v6_y), 2));
-							double d7 = sqrt(pow(double(v7_x), 2) + pow(double(v7_y), 2));
+							double v3_x = jointPoint[9].x - jointPoint[8].x; //P8.x-P9.x
+							double v3_y = jointPoint[9].y - jointPoint[8].y;
+							double v4_x = jointPoint[9].x - jointPoint[10].x;
+							double v4_y = jointPoint[9].y - jointPoint[10].y;
+							double d3 = sqrt(pow((v3_x), 2) + pow((v3_y), 2));
+							double d4 = sqrt(pow((v4_x), 2) + pow((v4_y), 2));
 
-							double leftArm = acos((pow(d5, 2) + pow(d7, 2) - pow(d6, 2)) / (2 * (d5*d7))) * radian;
+							double leftArm = acos((v3_x * v4_x + v3_y * v4_y) / (d3*d4)) * radian;
 
 							//8-9-10
-							double v9_x = jointPoint[8].x - jointPoint[9].x; //P8.x-P9.x
-							double v9_y = jointPoint[8].y - jointPoint[9].y;
-							//double v10_x = jointPoint[9].x - jointPoint[10].x;
-							//double v10_y = jointPoint[9].y - jointPoint[10].y;
-							double v11_x = jointPoint[8].x - jointPoint[10].x;
-							double v11_y = jointPoint[8].y - jointPoint[10].y;
+							double v9_x = jointPoint[9].x - jointPoint[8].x; //P8.x-P9.x
+							double v9_y = jointPoint[9].y - jointPoint[8].y;
+							double v11_x = jointPoint[9].x - jointPoint[10].x;
+							double v11_y = jointPoint[9].y - jointPoint[10].y;
 							double d9 = sqrt(pow((v9_x), 2) + pow((v9_y), 2));
-							//double d10 = sqrt(pow((v10_x), 2) + pow((v10_y), 2));
 							double d11 = sqrt(pow((v11_x), 2) + pow((v11_y), 2));
 
 							double rightArm = acos((v9_x * v11_x + v9_y * v11_y) / (d9*d11)) * radian;
@@ -358,7 +313,7 @@ void Skeleton::skeletonTracking()
 								/* First set the URL that is about to receive our POST. This URL can
 								just as well be a https:// URL if that is what should receive the
 								data. */
-								curl_easy_setopt(curl, CURLOPT_URL, "http://10.200.26.11:8080/joints");
+								curl_easy_setopt(curl, CURLOPT_URL, "http://10.200.27.150:8080/joints");
 								/* Now specify the POST data */
 								curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf);
 
