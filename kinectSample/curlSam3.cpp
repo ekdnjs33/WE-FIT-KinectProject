@@ -26,12 +26,10 @@
 
 /* curl 이용해서 http로 데이터 보내는 소스 샘플(5/28) */
 
-#define CURL_STATICLIB
-#include <stdio.h>
-#include <curl/curl.h>
+#include <stdio.h> 
+#include <stdlib.h>
+#include <curl/curl.h> 
 
-#pragma comment(lib, "wldap32.lib")
-#pragma comment(lib, "ws2_32.lib")
 
 int main(void)
 {
@@ -39,7 +37,7 @@ int main(void)
 	CURLcode res;
 
 	/* In windows, this will init the winsock stuff */
-	curl_global_init(CURL_GLOBAL_ALL);
+	curl_global_init(CURL_GLOBAL_SSL);
 
 	/* get a curl handle */
 	curl = curl_easy_init();
@@ -47,9 +45,13 @@ int main(void)
 		/* First set the URL that is about to receive our POST. This URL can
 		just as well be a https:// URL if that is what should receive the
 		data. */
-		curl_easy_setopt(curl, CURLOPT_URL, "http://10.200.1.205:8080/joints");
+		curl_easy_setopt(curl, CURLOPT_URL, "https://we-fit.co.kr:8080/joints");
+		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false); // 인증서 체크같은데 true 시 안되는 경우가 많다.(https 접속시에 필요)
+		curl_easy_setopt(curl, CURLOPT_SSLVERSION, 0); // SSL 버젼 (https 접속시에 필요)
+													  
+		//curl_easy_setopt(curl, CURLOPT_POST, 1); // Post Get 접속 여부
 		/* Now specify the POST data */
-		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "userId=white&jointType=a&pointX=100&pointY=200&timestamp=2018-12-12 12:31:23");
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "userId=white&backAngle=123&rightArm=123&leftArm=123&timestamp=2018-12-12 12:31:23");
 
 		/* Perform the request, res will get the return code */
 		res = curl_easy_perform(curl);

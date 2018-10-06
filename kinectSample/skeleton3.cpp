@@ -7,6 +7,7 @@
 #include <string>
 #define CURL_STATICLIB // http 통신 지원하는 curl 라이브러리 빌드 (6/1)
 #include <stdio.h> 
+#include <stdlib.h>
 #include <curl/curl.h> 
 
 #define radian 57.2958
@@ -20,9 +21,6 @@ CURLcode res;
 using namespace std;
 
 clock_t sclock, nclock; // sclock(시작), nclock(현재: 1/1000초)
-time_t t = time(NULL); // msec (5/1)
-struct tm tm = *localtime(&t);
-int tail = 0;
 
 ofstream out("test.txt");// file (5/1)
 
@@ -190,6 +188,10 @@ void Skeleton::skeletonTracking()
 
 	while (1)
 	{
+		time_t t = time(NULL); // msec (5/1)
+		struct tm tm = *localtime(&t);
+		int tail = 0;
+
 		/* 1/100초 단위로 세기 (5/1) */
 		nclock = clock();
 		if (nclock - sclock >= (CLOCKS_PER_SEC / 100)) // clock/100초와 크거나 같으면
@@ -258,7 +260,7 @@ void Skeleton::skeletonTracking()
 
 						if (SUCCEEDED(hResult)) {
 							// 실시간 시간 데이터 추출 (4/30)
-							std::cout << "[time] " << tm.tm_year + 1900 << "-" << tm.tm_mon + 1 << "-" << tm.tm_mday << " " << tm.tm_hour << ":" << tm.tm_min << ":" << tm.tm_sec << ":" << tail << std::endl;
+							std::cout << "[time] " << tm.tm_year + 1900 << "-" << tm.tm_mon + 1 << "-" << tm.tm_mday << " " << tm.tm_hour << ":" << tm.tm_min << ":" << tm.tm_sec << std::endl;
 
 							cv::Point jointPoint[25];
 							for (int type = 0; type < JointType::JointType_Count; type++)
@@ -274,6 +276,8 @@ void Skeleton::skeletonTracking()
 							double d2 = sqrt(pow((v2_x), 2) + pow((v2_y), 2));
 
 							double backAngle = acos((v1_x * v2_x + v1_y * v2_y) / (d1*d2)) * radian;
+							int backAngle1 = (int)backAngle;
+					
 
 							//4-5-6
 							double v3_x = jointPoint[9].x - jointPoint[8].x; //P8.x-P9.x
@@ -284,6 +288,7 @@ void Skeleton::skeletonTracking()
 							double d4 = sqrt(pow((v4_x), 2) + pow((v4_y), 2));
 
 							double leftArm = acos((v3_x * v4_x + v3_y * v4_y) / (d3*d4)) * radian;
+							int leftArm1 = (int)leftArm;
 
 							//8-9-10
 							double v9_x = jointPoint[9].x - jointPoint[8].x; //P8.x-P9.x
@@ -294,28 +299,33 @@ void Skeleton::skeletonTracking()
 							double d11 = sqrt(pow((v11_x), 2) + pow((v11_y), 2));
 
 							double rightArm = acos((v9_x * v11_x + v9_y * v11_y) / (d9*d11)) * radian;
+							int rightArm1 = (int)rightArm;
 
 							// 실시간 스켈레톤 데이터 좌표 추출 (4/23)
 
 							// kinect-server로 시간 및 skeleton 좌표 데이터 post (6/1)
 							/* Now specify the POST data */
 							char buf[200];
-							sprintf(buf, "userId=white&backAngle=%.2f&rightArm=%.2f&leftArm=%.2f&timestamp=%d-%02d-%02d %02d:%02d:%02d.%03d", backAngle, rightArm, leftArm, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tail);
+							sprintf(buf, "userId=2345&backAngle=%d&rightArm=%d&leftArm=%d&timestamp=%d-%02d-%02d %02d:%02d:%02d", backAngle1, rightArm1, leftArm1, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 							//curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf); // 데이터 post (6/1)
 							// 나노초 단위 서버에 전송 (7/2)
 
 							/* In windows, this will init the winsock stuff */
 							curl_global_init(CURL_GLOBAL_ALL);
+							curl = curl_easy_init();
 
 							/* get a curl handle */
-							curl = curl_easy_init();
+						
 							if (curl) {
 								/* First set the URL that is about to receive our POST. This URL can
 								just as well be a https:// URL if that is what should receive the
 								data. */
-								curl_easy_setopt(curl, CURLOPT_URL, "http://10.200.27.150:8080/joints");
+								curl_easy_setopt(curl, CURLOPT_URL, "http://14.49.37.187:8090/joints"); //접속할 URL 주소
+								
 								/* Now specify the POST data */
+								
 								curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf);
+							
 
 								/* Perform the request, res will get the return code */
 								res = curl_easy_perform(curl);
@@ -326,15 +336,12 @@ void Skeleton::skeletonTracking()
 								/* always cleanup */
 								curl_easy_cleanup(curl);
 
-								curl_global_cleanup();
-
-								std::cout << "backAngle: " << backAngle << " rightArm: " << rightArm << " leftArm: " << leftArm << std::endl;
+								std::cout << "backAngle: " << backAngle1 << " rightArm: " << rightArm1 << " leftArm: " << leftArm1 << std::endl;
 
 							}
+							curl_global_cleanup();
 
 						}
-
-
 						//if (SUCCEEDED(hResult))
 						//   std::cout << "amount: " << amount.X << ", " << amount.Y << std::endl;
 						// std::를 쓰면 콘솔 창에 출력, 안쓰면 파일입출력
@@ -356,6 +363,7 @@ void Skeleton::skeletonTracking()
 		cv::imshow(depthWinName, depthMat);
 
 		if (cv::waitKey(10) == VK_ESCAPE)
+			 
 			break;
 	}
 
